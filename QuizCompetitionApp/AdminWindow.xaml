@@ -1,0 +1,78 @@
+﻿<Window x:Class="QuizCompetitionApp.AdminWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Admin Panel" Height="650" Width="600">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20">
+            <TextBlock Text="Admin Panel - Create/Edit Questions" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+
+            <!-- Question List -->
+            <TextBlock Text="Saved Questions:" FontWeight="Bold" Margin="0,10,0,5"/>
+            <ListBox x:Name="QuestionList" Height="150" SelectionChanged="QuestionList_SelectionChanged"/>
+
+            <!-- Question -->
+            <TextBlock Text="Question:" FontWeight="Bold" Margin="0,10,0,0"/>
+            <TextBox x:Name="QuestionTextBox" Height="60" TextWrapping="Wrap" AcceptsReturn="True"/>
+
+            <!-- Answers -->
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <Border x:Name="Border1" BorderBrush="Gray" BorderThickness="1" Padding="5" Margin="0,0,10,0">
+                    <StackPanel>
+                        <TextBlock Text="Answer 1"/>
+                        <TextBox x:Name="Answer1"/>
+                        <CheckBox x:Name="Correct1" Content="Correct" Checked="Answer_Checked" Unchecked="Answer_Unchecked"/>
+                    </StackPanel>
+                </Border>
+
+                <Border x:Name="Border2" BorderBrush="Gray" BorderThickness="1" Padding="5" Margin="0,0,10,0">
+                    <StackPanel>
+                        <TextBlock Text="Answer 2"/>
+                        <TextBox x:Name="Answer2"/>
+                        <CheckBox x:Name="Correct2" Content="Correct" Checked="Answer_Checked" Unchecked="Answer_Unchecked"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <Border x:Name="Border3" BorderBrush="Gray" BorderThickness="1" Padding="5" Margin="0,0,10,0">
+                    <StackPanel>
+                        <TextBlock Text="Answer 3"/>
+                        <TextBox x:Name="Answer3"/>
+                        <CheckBox x:Name="Correct3" Content="Correct" Checked="Answer_Checked" Unchecked="Answer_Unchecked"/>
+                    </StackPanel>
+                </Border>
+
+                <Border x:Name="Border4" BorderBrush="Gray" BorderThickness="1" Padding="5" Margin="0,0,10,0">
+                    <StackPanel>
+                        <TextBlock Text="Answer 4"/>
+                        <TextBox x:Name="Answer4"/>
+                        <CheckBox x:Name="Correct4" Content="Correct" Checked="Answer_Checked" Unchecked="Answer_Unchecked"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- Points -->
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Points:" FontWeight="Bold"/>
+                    <TextBox x:Name="PointsTextBox" Width="80"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Bonus Points:" FontWeight="Bold"/>
+                    <TextBox x:Name="BonusTextBox" Width="80"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Image Picker -->
+            <TextBlock Text="Question Image:" FontWeight="Bold" Margin="0,10,0,0"/>
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Select Image" Click="SelectImage_Click" Margin="0,0,10,0"/>
+                <TextBlock x:Name="ImagePathText" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Save Button -->
+            <Button Content="Save Question" Margin="0,20,0,0" Padding="10,5" Click="SaveQuestion_Click"/>
+
+        </StackPanel>
+    </ScrollViewer>
+</Window>

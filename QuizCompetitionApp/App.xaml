@@ -1,9 +1,5 @@
 ﻿<Application x:Class="QuizCompetitionApp.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:QuizCompetitionApp"
-             StartupUri="MainWindow.xaml">
-    <Application.Resources>
-         
-    </Application.Resources>
+             StartupUri="AdminWindow.xaml"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 </Application>

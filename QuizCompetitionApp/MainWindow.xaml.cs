@@ -20,5 +20,13 @@ namespace QuizCompetitionApp
         {
             InitializeComponent();
         }
+
+        private void SinglePlayerButton_Click(object sender, RoutedEventArgs e)
+        {
+            QuizWindow quizWindow = new QuizWindow();
+            quizWindow.ShowDialog(); // Or Show(), if you want it non-blocking
+        }
+
     }
+
 }

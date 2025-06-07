@@ -1,31 +1,33 @@
-﻿// File: AdminWindow.xaml.cs
-using Microsoft.Win32;
+﻿using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 
 namespace QuizCompetitionApp
 {
     public partial class AdminWindow : Window
     {
-        private string imagePath = "";
-        private int? editingIndex = null;
+        private List<Question> questions = new List<Question>();
+        private Question? selectedQuestion = null;
 
         public AdminWindow()
         {
             InitializeComponent();
-            LoadQuestionList();
+            QuestionsListBox.ItemsSource = questions;
         }
 
         private void SaveQuestion_Click(object sender, RoutedEventArgs e)
         {
-            string questionText = QuestionTextBox.Text;
-            List<string> answers = new List<string>
+            if (!int.TryParse(PointsTextBox.Text, out int points) ||
+                !int.TryParse(BonusPointsTextBox.Text, out int bonusPoints))
+            {
+                MessageBox.Show("Please enter valid numbers for points and bonus.");
+                return;
+            }
+
+            List<string> options = new()
             {
                 Answer1.Text,
                 Answer2.Text,
@@ -33,130 +35,136 @@ namespace QuizCompetitionApp
                 Answer4.Text
             };
 
-            List<int> correctAnswers = new List<int>();
-            if (Correct1.IsChecked == true) correctAnswers.Add(0);
-            if (Correct2.IsChecked == true) correctAnswers.Add(1);
-            if (Correct3.IsChecked == true) correctAnswers.Add(2);
-            if (Correct4.IsChecked == true) correctAnswers.Add(3);
+            List<int> correctIndexes = new();
+            if (Correct1.IsChecked == true) correctIndexes.Add(0);
+            if (Correct2.IsChecked == true) correctIndexes.Add(1);
+            if (Correct3.IsChecked == true) correctIndexes.Add(2);
+            if (Correct4.IsChecked == true) correctIndexes.Add(3);
 
-            int.TryParse(PointsTextBox.Text, out int points);
-            int.TryParse(BonusTextBox.Text, out int bonusPoints);
-
-            Question newQuestion = new Question
+            if (correctIndexes.Count == 0)
             {
-                QuestionText = questionText,
-                AnswerOptions = answers,
-                CorrectAnswerIndices = correctAnswers,
-                Points = points,
-                BonusPoints = bonusPoints,
-                ImagePath = imagePath
+                MessageBox.Show("Please select at least one correct answer.");
+                return;
+            }
+
+            Question question = new Question
+            {
+                Text = QuestionTextBox.Text,
+                Options = options,
+                CorrectAnswers = correctIndexes,
+                ImagePath = ImagePathTextBox.Text,
+                Point = points,
+                BonusPoint = bonusPoints
             };
 
-            string filePath = "questions.json";
-            List<Question> questions = new List<Question>();
-
-            if (File.Exists(filePath))
-            {
-                string existingJson = File.ReadAllText(filePath);
-                questions = JsonSerializer.Deserialize<List<Question>>(existingJson) ?? new List<Question>();
-            }
-
-            if (editingIndex.HasValue)
-            {
-                questions[editingIndex.Value] = newQuestion;
-                editingIndex = null;
-            }
-            else
-            {
-                questions.Add(newQuestion);
-            }
-
-            string json = JsonSerializer.Serialize(questions, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(filePath, json);
-
-            MessageBox.Show("Question saved successfully!");
-            LoadQuestionList();
+            questions.Add(question);
+            QuestionsListBox.Items.Refresh();
+            ClearInputs();
         }
 
-        private void SelectImage_Click(object sender, RoutedEventArgs e)
+        private void UpdateQuestion_Click(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog openFileDialog = new OpenFileDialog();
-            openFileDialog.Filter = "Image files (*.jpg;*.png)|*.jpg;*.png";
-            if (openFileDialog.ShowDialog() == true)
+            if (selectedQuestion == null)
             {
-                imagePath = openFileDialog.FileName;
-                ImagePathText.Text = imagePath;
+                MessageBox.Show("Please select a question to update.");
+                return;
+            }
+
+            if (!int.TryParse(PointsTextBox.Text, out int points) ||
+                !int.TryParse(BonusPointsTextBox.Text, out int bonusPoints))
+            {
+                MessageBox.Show("Please enter valid numbers for points and bonus.");
+                return;
+            }
+
+            List<string> options = new()
+            {
+                Answer1.Text,
+                Answer2.Text,
+                Answer3.Text,
+                Answer4.Text
+            };
+
+            List<int> correctIndexes = new();
+            if (Correct1.IsChecked == true) correctIndexes.Add(0);
+            if (Correct2.IsChecked == true) correctIndexes.Add(1);
+            if (Correct3.IsChecked == true) correctIndexes.Add(2);
+            if (Correct4.IsChecked == true) correctIndexes.Add(3);
+
+            selectedQuestion.Text = QuestionTextBox.Text;
+            selectedQuestion.Options = options;
+            selectedQuestion.CorrectAnswers = correctIndexes;
+            selectedQuestion.ImagePath = ImagePathTextBox.Text;
+            selectedQuestion.Point = points;
+            selectedQuestion.BonusPoint = bonusPoints;
+
+            QuestionsListBox.Items.Refresh();
+            ClearInputs();
+        }
+
+        private void DeleteQuestion_Click(object sender, RoutedEventArgs e)
+        {
+            if (QuestionsListBox.SelectedItem is Question selected)
+            {
+                questions.Remove(selected);
+                QuestionsListBox.Items.Refresh();
+                ClearInputs();
             }
         }
 
-        private void LoadQuestionList()
+        private void QuestionsListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            QuestionList.Items.Clear();
-            string filePath = "questions.json";
-
-            if (File.Exists(filePath))
+            if (QuestionsListBox.SelectedItem is Question selected)
             {
-                string json = File.ReadAllText(filePath);
-                var questions = JsonSerializer.Deserialize<List<Question>>(json);
-                if (questions != null)
+                selectedQuestion = selected;
+                QuestionTextBox.Text = selected.Text;
+
+                if (selected.Options.Count >= 4)
                 {
-                    for (int i = 0; i < questions.Count; i++)
-                    {
-                        QuestionList.Items.Add($"{i + 1}. {questions[i].QuestionText}");
-                    }
+                    Answer1.Text = selected.Options[0];
+                    Answer2.Text = selected.Options[1];
+                    Answer3.Text = selected.Options[2];
+                    Answer4.Text = selected.Options[3];
                 }
+
+                Correct1.IsChecked = selected.CorrectAnswers.Contains(0);
+                Correct2.IsChecked = selected.CorrectAnswers.Contains(1);
+                Correct3.IsChecked = selected.CorrectAnswers.Contains(2);
+                Correct4.IsChecked = selected.CorrectAnswers.Contains(3);
+
+                ImagePathTextBox.Text = selected.ImagePath;
+                PointsTextBox.Text = selected.Point.ToString();
+                BonusPointsTextBox.Text = selected.BonusPoint.ToString();
             }
         }
 
-        private void QuestionList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void BrowseImage_Click(object sender, RoutedEventArgs e)
         {
-            if (QuestionList.SelectedIndex >= 0)
+            OpenFileDialog dialog = new OpenFileDialog
             {
-                string filePath = "questions.json";
-                if (!File.Exists(filePath)) return;
-
-                var questions = JsonSerializer.Deserialize<List<Question>>(File.ReadAllText(filePath));
-                if (questions == null || QuestionList.SelectedIndex >= questions.Count) return;
-
-                var selected = questions[QuestionList.SelectedIndex];
-                editingIndex = QuestionList.SelectedIndex;
-
-                QuestionTextBox.Text = selected.QuestionText;
-                Answer1.Text = selected.AnswerOptions.ElementAtOrDefault(0) ?? "";
-                Answer2.Text = selected.AnswerOptions.ElementAtOrDefault(1) ?? "";
-                Answer3.Text = selected.AnswerOptions.ElementAtOrDefault(2) ?? "";
-                Answer4.Text = selected.AnswerOptions.ElementAtOrDefault(3) ?? "";
-
-                Correct1.IsChecked = selected.CorrectAnswerIndices.Contains(0);
-                Correct2.IsChecked = selected.CorrectAnswerIndices.Contains(1);
-                Correct3.IsChecked = selected.CorrectAnswerIndices.Contains(2);
-                Correct4.IsChecked = selected.CorrectAnswerIndices.Contains(3);
-
-                PointsTextBox.Text = selected.Points.ToString();
-                BonusTextBox.Text = selected.BonusPoints.ToString();
-                imagePath = selected.ImagePath ?? "";
-                ImagePathText.Text = string.IsNullOrEmpty(imagePath) ? "No image selected" : imagePath;
-
-                UpdateAnswerBorders();
+                Filter = "Image Files|*.jpg;*.jpeg;*.png;*.gif"
+            };
+            if (dialog.ShowDialog() == true)
+            {
+                ImagePathTextBox.Text = dialog.FileName;
             }
         }
 
-        private void Answer_Checked(object sender, RoutedEventArgs e)
+        private void ClearInputs()
         {
-            UpdateAnswerBorders();
-        }
-
-        private void Answer_Unchecked(object sender, RoutedEventArgs e)
-        {
-            UpdateAnswerBorders();
-        }
-
-        private void UpdateAnswerBorders()
-        {
-            Border1.Background = Correct1.IsChecked == true ? Brushes.LightGreen : Brushes.Transparent;
-            Border2.Background = Correct2.IsChecked == true ? Brushes.LightGreen : Brushes.Transparent;
-            Border3.Background = Correct3.IsChecked == true ? Brushes.LightGreen : Brushes.Transparent;
-            Border4.Background = Correct4.IsChecked == true ? Brushes.LightGreen : Brushes.Transparent;
+            QuestionTextBox.Text = "";
+            Answer1.Text = "";
+            Answer2.Text = "";
+            Answer3.Text = "";
+            Answer4.Text = "";
+            Correct1.IsChecked = false;
+            Correct2.IsChecked = false;
+            Correct3.IsChecked = false;
+            Correct4.IsChecked = false;
+            ImagePathTextBox.Text = "";
+            PointsTextBox.Text = "";
+            BonusPointsTextBox.Text = "";
+            selectedQuestion = null;
         }
     }
 }

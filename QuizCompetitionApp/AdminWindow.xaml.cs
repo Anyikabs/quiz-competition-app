@@ -1,7 +1,9 @@
 ﻿using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
@@ -10,45 +12,37 @@ namespace QuizCompetitionApp
 {
     public partial class AdminWindow : Window
     {
-        private List<Question> questions = new List<Question>();
+        private readonly List<Question> questions = new();
         private Question? selectedQuestion = null;
+        private const string DataFilePath = "questions.json";
 
         public AdminWindow()
         {
             InitializeComponent();
-            QuestionsListBox.ItemsSource = questions;
+            LoadQuestions();
+            RefreshQuestionsList();
         }
 
         private void SaveQuestion_Click(object sender, RoutedEventArgs e)
         {
-            if (!int.TryParse(PointsTextBox.Text, out int points) ||
-                !int.TryParse(BonusPointsTextBox.Text, out int bonusPoints))
-            {
-                MessageBox.Show("Please enter valid numbers for points and bonus.");
-                return;
-            }
+            if (!TryGetPoints(out int points, out int bonusPoints)) return;
 
             List<string> options = new()
-        {
-            Answer1.Text,
-            Answer2.Text,
-            Answer3.Text,
-            Answer4.Text
-        };
+            {
+                Answer1.Text,
+                Answer2.Text,
+                Answer3.Text,
+                Answer4.Text
+            };
 
-            List<int> correctIndexes = new();
-            if (Correct1.IsChecked == true) correctIndexes.Add(0);
-            if (Correct2.IsChecked == true) correctIndexes.Add(1);
-            if (Correct3.IsChecked == true) correctIndexes.Add(2);
-            if (Correct4.IsChecked == true) correctIndexes.Add(3);
-
+            List<int> correctIndexes = GetCorrectIndexes();
             if (correctIndexes.Count == 0)
             {
                 MessageBox.Show("Please select at least one correct answer.");
                 return;
             }
 
-            Question question = new Question
+            Question question = new()
             {
                 Text = QuestionTextBox.Text,
                 Options = options,
@@ -59,8 +53,8 @@ namespace QuizCompetitionApp
             };
 
             questions.Add(question);
-            UpdateQuestionNumbers();
-            QuestionsListBox.Items.Refresh();
+            SaveQuestions();
+            RefreshQuestionsList();
             ClearInputs();
         }
 
@@ -72,26 +66,22 @@ namespace QuizCompetitionApp
                 return;
             }
 
-            if (!int.TryParse(PointsTextBox.Text, out int points) ||
-                !int.TryParse(BonusPointsTextBox.Text, out int bonusPoints))
-            {
-                MessageBox.Show("Please enter valid numbers for points and bonus.");
-                return;
-            }
+            if (!TryGetPoints(out int points, out int bonusPoints)) return;
 
             List<string> options = new()
-        {
-            Answer1.Text,
-            Answer2.Text,
-            Answer3.Text,
-            Answer4.Text
-        };
+            {
+                Answer1.Text,
+                Answer2.Text,
+                Answer3.Text,
+                Answer4.Text
+            };
 
-            List<int> correctIndexes = new();
-            if (Correct1.IsChecked == true) correctIndexes.Add(0);
-            if (Correct2.IsChecked == true) correctIndexes.Add(1);
-            if (Correct3.IsChecked == true) correctIndexes.Add(2);
-            if (Correct4.IsChecked == true) correctIndexes.Add(3);
+            List<int> correctIndexes = GetCorrectIndexes();
+            if (correctIndexes.Count == 0)
+            {
+                MessageBox.Show("Please select at least one correct answer.");
+                return;
+            }
 
             selectedQuestion.Text = QuestionTextBox.Text;
             selectedQuestion.Options = options;
@@ -100,8 +90,8 @@ namespace QuizCompetitionApp
             selectedQuestion.Point = points;
             selectedQuestion.BonusPoint = bonusPoints;
 
-            UpdateQuestionNumbers();
-            QuestionsListBox.Items.Refresh();
+            SaveQuestions();
+            RefreshQuestionsList();
             ClearInputs();
         }
 
@@ -109,10 +99,14 @@ namespace QuizCompetitionApp
         {
             if (QuestionsListBox.SelectedItem is Question selected)
             {
-                questions.Remove(selected);
-                UpdateQuestionNumbers();
-                QuestionsListBox.Items.Refresh();
-                ClearInputs();
+                var result = MessageBox.Show("Are you sure you want to delete this question?", "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (result == MessageBoxResult.Yes)
+                {
+                    questions.Remove(selected);
+                    SaveQuestions();
+                    RefreshQuestionsList();
+                    ClearInputs();
+                }
             }
         }
 
@@ -140,31 +134,85 @@ namespace QuizCompetitionApp
                 PointsTextBox.Text = selected.Point.ToString();
                 BonusPointsTextBox.Text = selected.BonusPoint.ToString();
 
-                try
-                {
-                    if (!string.IsNullOrEmpty(selected.ImagePath))
-                        PreviewImage.Source = new BitmapImage(new Uri(selected.ImagePath));
-                    else
-                        PreviewImage.Source = null;
-                }
-                catch
-                {
-                    PreviewImage.Source = null;
-                }
+                LoadImagePreview(selected.ImagePath);
             }
         }
 
         private void BrowseImage_Click(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog dialog = new OpenFileDialog
+            OpenFileDialog dialog = new()
             {
                 Filter = "Image Files|*.jpg;*.jpeg;*.png;*.gif"
             };
             if (dialog.ShowDialog() == true)
             {
                 ImagePathTextBox.Text = dialog.FileName;
-                PreviewImage.Source = new BitmapImage(new Uri(dialog.FileName));
+                LoadImagePreview(dialog.FileName);
             }
+        }
+
+        private void LoadImagePreview(string imagePath)
+        {
+            if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
+            {
+                try
+                {
+                    BitmapImage bitmap = new();
+                    bitmap.BeginInit();
+                    bitmap.UriSource = new Uri(imagePath);
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.EndInit();
+                    ImagePreview.Source = bitmap;
+                }
+                catch
+                {
+                    ImagePreview.Source = null;
+                }
+            }
+            else
+            {
+                ImagePreview.Source = null;
+            }
+        }
+
+        private List<int> GetCorrectIndexes()
+        {
+            List<int> correct = new();
+            if (Correct1.IsChecked == true) correct.Add(0);
+            if (Correct2.IsChecked == true) correct.Add(1);
+            if (Correct3.IsChecked == true) correct.Add(2);
+            if (Correct4.IsChecked == true) correct.Add(3);
+            return correct;
+        }
+
+        private bool TryGetPoints(out int points, out int bonusPoints)
+        {
+            points = 0;
+            bonusPoints = 0;
+
+            if (!int.TryParse(PointsTextBox.Text, out points) ||
+                !int.TryParse(BonusPointsTextBox.Text, out bonusPoints))
+            {
+                MessageBox.Show("Please enter valid numbers for points and bonus.");
+                return false;
+            }
+            return true;
+        }
+
+        private void RefreshQuestionsList()
+        {
+            QuestionsListBox.ItemsSource = null;
+            for (int i = 0; i < questions.Count; i++)
+            {
+                questions[i].DisplayText = $"{i + 1}. {questions[i].Text}";
+            }
+            QuestionsListBox.ItemsSource = questions;
+            QuestionsListBox.DisplayMemberPath = "DisplayText";
+        }
+
+        private void ClearInputs_Click(object sender, RoutedEventArgs e)
+        {
+            ClearInputs();
         }
 
         private void ClearInputs()
@@ -179,20 +227,30 @@ namespace QuizCompetitionApp
             Correct3.IsChecked = false;
             Correct4.IsChecked = false;
             ImagePathTextBox.Text = "";
+            ImagePreview.Source = null;
             PointsTextBox.Text = "";
             BonusPointsTextBox.Text = "";
             selectedQuestion = null;
-            PreviewImage.Source = null;
         }
 
-        private void UpdateQuestionNumbers()
+        private void SaveQuestions()
         {
-            for (int i = 0; i < questions.Count; i++)
+            var json = JsonSerializer.Serialize(questions);
+            File.WriteAllText(DataFilePath, json);
+        }
+
+        private void LoadQuestions()
+        {
+            if (File.Exists(DataFilePath))
             {
-                questions[i].DisplayText = $"{i + 1}. {questions[i].Text}";
+                string json = File.ReadAllText(DataFilePath);
+                var loaded = JsonSerializer.Deserialize<List<Question>>(json);
+                if (loaded != null)
+                {
+                    questions.Clear();
+                    questions.AddRange(loaded);
+                }
             }
         }
     }
 }
-
-
